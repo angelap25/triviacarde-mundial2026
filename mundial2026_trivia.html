@@ -1,0 +1,1232 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TRIVIA ARCADE · MUNDIAL 2026</title>
+<style>
+@font-face {
+  font-family: 'PressStart';
+  src: local('Press Start 2P');
+}
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap');
+
+:root{
+  --grass-dark:#0a3d1f;
+  --grass-deep:#062c16;
+  --chalk:#f0ead6;
+  --gold:#d4a843;
+  --gold-bright:#ffd25c;
+  --card-red:#c1272d;
+  --led-green:#39ff7a;
+  --led-dim:#0f4a26;
+  --screen-frame:#1c1208;
+  --screen-frame-light:#3a2814;
+  --shadow-deep:#020a04;
+}
+
+*{box-sizing:border-box;}
+html,body{
+  margin:0;padding:0;
+  min-height:100vh;
+  background:
+    radial-gradient(ellipse at top, #0e4d28 0%, var(--shadow-deep) 70%);
+  font-family:'VT323', monospace;
+  color:var(--chalk);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:16px;
+  overflow-x:hidden;
+}
+
+.cabinet{
+  width:100%;
+  max-width:560px;
+  background:linear-gradient(180deg, var(--screen-frame-light), var(--screen-frame) 30%);
+  border-radius:28px;
+  padding:18px 18px 26px;
+  box-shadow:
+    0 0 0 3px #000,
+    0 0 0 6px #5a3d1f,
+    0 20px 50px rgba(0,0,0,0.7),
+    inset 0 2px 0 rgba(255,255,255,0.08);
+  position:relative;
+}
+
+.cabinet::before{
+  content:"⚽ TRIVIA ARCADE ⚽";
+  display:block;
+  text-align:center;
+  font-family:'Press Start 2P', monospace;
+  font-size:10px;
+  letter-spacing:2px;
+  color:var(--gold-bright);
+  text-shadow:0 0 8px rgba(255,210,92,0.6);
+  margin-bottom:10px;
+}
+
+.screen{
+  background:radial-gradient(ellipse at 50% 0%, #0f5a2c 0%, var(--grass-deep) 80%);
+  border-radius:14px;
+  border:4px solid #000;
+  box-shadow:
+    inset 0 0 60px rgba(0,0,0,0.65),
+    inset 0 0 4px rgba(0,0,0,0.9);
+  padding:18px 16px;
+  position:relative;
+  overflow:hidden;
+  min-height:480px;
+}
+
+/* scanlines CRT */
+.screen::after{
+  content:"";
+  position:absolute; inset:0;
+  background:repeating-linear-gradient(
+    to bottom,
+    rgba(0,0,0,0.18) 0px,
+    rgba(0,0,0,0.18) 1px,
+    transparent 2px,
+    transparent 3px
+  );
+  pointer-events:none;
+  mix-blend-mode:multiply;
+  z-index:50;
+}
+.screen::before{
+  content:"";
+  position:absolute; inset:0;
+  background:radial-gradient(ellipse at 50% 30%, rgba(255,255,255,0.05), transparent 60%);
+  pointer-events:none;
+  z-index:51;
+}
+
+/* field lines decor */
+.field-lines{
+  position:absolute;
+  inset:0;
+  opacity:0.08;
+  z-index:0;
+  pointer-events:none;
+}
+
+.view{ position:relative; z-index:2; }
+.hidden{ display:none !important; }
+
+/* ---- Pixel heading style ---- */
+.pixel-title{
+  font-family:'Press Start 2P', monospace;
+  color:var(--gold-bright);
+  text-shadow:2px 2px 0 #000, 0 0 10px rgba(255,210,92,0.4);
+  letter-spacing:1px;
+  line-height:1.5;
+}
+
+/* ---- LED scoreboard ---- */
+.scoreboard{
+  display:flex;
+  justify-content:space-between;
+  gap:8px;
+  margin-bottom:14px;
+}
+.player-led{
+  flex:1;
+  background:#000;
+  border:2px solid var(--led-dim);
+  border-radius:6px;
+  padding:8px 6px;
+  text-align:center;
+  box-shadow:inset 0 0 12px rgba(0,255,120,0.08);
+}
+.player-led.active{
+  border-color:var(--led-green);
+  box-shadow:0 0 12px rgba(57,255,122,0.5), inset 0 0 14px rgba(57,255,122,0.18);
+}
+.player-led .pname{
+  font-family:'Press Start 2P';
+  font-size:8px;
+  color:var(--led-dim);
+  margin-bottom:4px;
+  letter-spacing:1px;
+}
+.player-led.active .pname{ color:var(--led-green); }
+.player-led .pscore{
+  font-family:'Press Start 2P';
+  font-size:18px;
+  color:var(--led-dim);
+  text-shadow:none;
+}
+.player-led.active .pscore{
+  color:var(--led-green);
+  text-shadow:0 0 8px rgba(57,255,122,0.8);
+}
+
+/* ---- buttons ---- */
+.btn{
+  font-family:'Press Start 2P', monospace;
+  font-size:11px;
+  letter-spacing:1px;
+  color:var(--grass-deep);
+  background:linear-gradient(180deg, var(--gold-bright), var(--gold));
+  border:none;
+  border-radius:8px;
+  padding:14px 12px;
+  cursor:pointer;
+  box-shadow:0 4px 0 #8a6420, 0 6px 10px rgba(0,0,0,0.4);
+  transition:transform 0.06s ease;
+  width:100%;
+  text-align:center;
+}
+.btn:active{
+  transform:translateY(3px);
+  box-shadow:0 1px 0 #8a6420, 0 2px 4px rgba(0,0,0,0.4);
+}
+.btn:disabled{
+  opacity:0.5;
+  cursor:not-allowed;
+}
+.btn-secondary{
+  background:linear-gradient(180deg, #d8d2bd, var(--chalk));
+  box-shadow:0 4px 0 #8c8470, 0 6px 10px rgba(0,0,0,0.4);
+}
+.btn-red{
+  background:linear-gradient(180deg, #e8454c, var(--card-red));
+  color:var(--chalk);
+  box-shadow:0 4px 0 #7a161b, 0 6px 10px rgba(0,0,0,0.4);
+}
+
+.btn-row{ display:flex; gap:10px; }
+
+/* ---- mode select cards ---- */
+.mode-grid{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  margin-top:14px;
+}
+.mode-card{
+  background:rgba(0,0,0,0.35);
+  border:2px solid var(--gold);
+  border-radius:10px;
+  padding:12px 14px;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  gap:12px;
+  transition:background 0.15s, transform 0.1s;
+}
+.mode-card:hover, .mode-card:active{
+  background:rgba(212,168,67,0.18);
+  transform:translateX(2px);
+}
+.mode-card .icon{ font-size:26px; line-height:1; flex-shrink:0; }
+.mode-card .info{ flex:1; }
+.mode-card .mtitle{
+  font-family:'Press Start 2P';
+  font-size:11px;
+  color:var(--gold-bright);
+  margin-bottom:4px;
+}
+.mode-card .mdesc{
+  font-size:12px;
+  color:var(--chalk);
+  opacity:0.75;
+  line-height:1.3;
+}
+
+/* ---- question view ---- */
+.qcounter{
+  font-size:16px;
+  text-align:center;
+  color:var(--chalk);
+  opacity:0.8;
+  margin-bottom:6px;
+}
+.question-box{
+  background:rgba(0,0,0,0.4);
+  border:2px solid var(--chalk);
+  border-radius:10px;
+  padding:16px;
+  margin-bottom:16px;
+  min-height:90px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+}
+.question-box p{
+  font-size:19px;
+  line-height:1.4;
+  margin:0;
+}
+.options{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+.option-btn{
+  font-family:'VT323', monospace;
+  font-size:17px;
+  text-align:left;
+  background:rgba(240,234,214,0.08);
+  border:2px solid var(--chalk);
+  color:var(--chalk);
+  border-radius:8px;
+  padding:10px 14px;
+  cursor:pointer;
+  transition:background 0.12s, border-color 0.12s;
+}
+.option-btn:hover{ background:rgba(240,234,214,0.18); }
+.option-btn.correct{
+  background:rgba(57,255,122,0.25);
+  border-color:var(--led-green);
+  color:var(--led-green);
+}
+.option-btn.wrong{
+  background:rgba(193,39,45,0.35);
+  border-color:var(--card-red);
+  color:#ff9da0;
+}
+.option-btn:disabled{ cursor:default; }
+
+/* ---- energy bar (modo 1) ---- */
+.energy-wrap{
+  margin-bottom:14px;
+}
+.energy-label{
+  font-family:'Press Start 2P';
+  font-size:9px;
+  color:var(--gold-bright);
+  margin-bottom:6px;
+  text-align:center;
+  letter-spacing:1px;
+}
+.energy-bar-outer{
+  width:100%;
+  height:26px;
+  background:#000;
+  border:2px solid var(--chalk);
+  border-radius:6px;
+  overflow:hidden;
+  padding:3px;
+}
+.energy-bar-inner{
+  height:100%;
+  border-radius:3px;
+  background:linear-gradient(90deg, #ff3b30, var(--gold-bright), var(--led-green));
+  transition:width 0.4s linear;
+  box-shadow:0 0 10px rgba(57,255,122,0.5);
+}
+
+/* ---- penales (modo 5) ---- */
+.penal-track{
+  background:linear-gradient(180deg, #1b6b34, #0a3d1f);
+  border:2px solid var(--chalk);
+  border-radius:8px;
+  height:46px;
+  position:relative;
+  margin-bottom:14px;
+  overflow:hidden;
+}
+.penal-track .goal{
+  position:absolute;
+  right:6px; top:50%;
+  transform:translateY(-50%);
+  font-size:26px;
+}
+.penal-track .ball{
+  position:absolute;
+  top:50%;
+  transform:translateY(-50%);
+  font-size:22px;
+  transition:left 0.5s ease;
+  left:4%;
+}
+.penal-track .yard-line{
+  position:absolute;
+  top:0;bottom:0;
+  width:2px;
+  background:rgba(240,234,214,0.25);
+}
+
+/* ---- racha multiplicador (modo 4) ---- */
+.streak-display{
+  text-align:center;
+  margin-bottom:10px;
+}
+.streak-display .mult{
+  font-family:'Press Start 2P';
+  font-size:26px;
+  color:var(--led-green);
+  text-shadow:0 0 10px rgba(57,255,122,0.7);
+}
+.streak-dots{
+  display:flex;
+  justify-content:center;
+  gap:6px;
+  margin-top:6px;
+}
+.streak-dots span{
+  width:10px;height:10px;border-radius:50%;
+  background:var(--led-dim);
+  border:1px solid #000;
+}
+.streak-dots span.lit{
+  background:var(--led-green);
+  box-shadow:0 0 6px rgba(57,255,122,0.8);
+}
+
+/* ---- VAR badge (modo 2) ---- */
+.var-banner{
+  background:var(--card-red);
+  color:var(--chalk);
+  font-family:'Press Start 2P';
+  font-size:10px;
+  text-align:center;
+  padding:8px;
+  border-radius:6px;
+  margin-bottom:12px;
+  letter-spacing:1px;
+  animation:varblink 0.8s infinite;
+}
+@keyframes varblink{
+  0%,100%{ opacity:1; }
+  50%{ opacity:0.55; }
+}
+
+/* ---- year travel (modo 3) ---- */
+.year-badge{
+  display:inline-block;
+  font-family:'Press Start 2P';
+  font-size:13px;
+  color:var(--grass-deep);
+  background:var(--gold-bright);
+  padding:6px 14px;
+  border-radius:20px;
+  margin:0 auto 12px;
+  display:block;
+  width:fit-content;
+  box-shadow:0 3px 0 #8a6420;
+}
+.year-track{
+  display:flex;
+  justify-content:space-between;
+  margin-bottom:14px;
+  gap:2px;
+}
+.year-track .dot{
+  flex:1;
+  height:6px;
+  background:var(--led-dim);
+  border-radius:3px;
+}
+.year-track .dot.done{ background:var(--led-green); }
+.year-track .dot.now{
+  background:var(--gold-bright);
+  box-shadow:0 0 6px rgba(255,210,92,0.7);
+}
+
+/* feedback flash */
+.feedback{
+  text-align:center;
+  font-family:'Press Start 2P';
+  font-size:13px;
+  padding:10px;
+  border-radius:8px;
+  margin-bottom:10px;
+}
+.feedback.ok{ background:rgba(57,255,122,0.15); color:var(--led-green); border:2px solid var(--led-green); }
+.feedback.bad{ background:rgba(193,39,45,0.2); color:#ff9da0; border:2px solid var(--card-red); }
+
+/* result screen */
+.trophy{
+  font-size:54px;
+  text-align:center;
+  margin-bottom:6px;
+}
+.title-result{
+  text-align:center;
+  font-family:'Press Start 2P';
+  font-size:14px;
+  color:var(--gold-bright);
+  margin-bottom:4px;
+  text-shadow:2px 2px 0 #000;
+}
+.subtitle-result{
+  text-align:center;
+  font-size:17px;
+  margin-bottom:16px;
+  opacity:0.85;
+}
+.final-scores{
+  display:flex;
+  gap:10px;
+  margin-bottom:18px;
+}
+.final-card{
+  flex:1;
+  text-align:center;
+  background:rgba(0,0,0,0.35);
+  border:2px solid var(--gold);
+  border-radius:10px;
+  padding:14px 8px;
+}
+.final-card .fname{
+  font-family:'Press Start 2P';
+  font-size:9px;
+  color:var(--gold-bright);
+  margin-bottom:6px;
+}
+.final-card .fscore{
+  font-family:'Press Start 2P';
+  font-size:20px;
+  color:var(--chalk);
+}
+.final-card.winner{
+  border-color:var(--led-green);
+  box-shadow:0 0 14px rgba(57,255,122,0.4);
+}
+.final-card.winner .fscore{ color:var(--led-green); }
+.winner-tag{
+  text-align:center;
+  font-size:18px;
+  margin-bottom:16px;
+  color:var(--gold-bright);
+}
+
+.turn-banner{
+  text-align:center;
+  font-family:'Press Start 2P';
+  font-size:11px;
+  color:var(--grass-deep);
+  background:var(--chalk);
+  padding:8px;
+  border-radius:6px;
+  margin-bottom:12px;
+}
+
+.small-note{
+  text-align:center;
+  font-size:14px;
+  opacity:0.7;
+  margin-top:10px;
+}
+
+@media (max-width:380px){
+  .pixel-title{ font-size:13px; }
+  .mode-card .mtitle{ font-size:10px; }
+}
+</style>
+</head>
+<body>
+
+<div class="cabinet">
+  <div class="screen">
+    <div id="app" class="view"></div>
+  </div>
+</div>
+
+<script>
+// ====== BANCO DE PREGUNTAS ======
+// Cada pregunta: { q, options:[4], correct: index }
+
+const QUESTIONS_GENERAL = [
+  { q: "¿Cuántos equipos participarán en el Mundial 2026?", options: ["32", "40", "48", "64"], correct: 2 },
+  { q: "¿Qué tres países son anfitriones del Mundial 2026?", options: ["España, Portugal y Marruecos", "EE.UU., México y Canadá", "Brasil, Argentina y Uruguay", "Qatar, Arabia Saudita y Egipto"], correct: 1 },
+  { q: "¿Quién es el máximo goleador histórico de los Mundiales?", options: ["Pelé", "Miroslav Klose", "Ronaldo Nazário", "Just Fontaine"], correct: 1 },
+  { q: "¿Qué selección ganó más Copas del Mundo?", options: ["Argentina", "Alemania", "Brasil", "Italia"], correct: 2 },
+  { q: "¿En qué país se jugó el primer Mundial de la historia?", options: ["Brasil", "Italia", "Francia", "Uruguay"], correct: 3 },
+  { q: "¿Cuántas Copas del Mundo ganó Argentina en total?", options: ["2", "3", "4", "5"], correct: 1 },
+  { q: "¿Qué jugador ganó el Balón de Oro del Mundial 2022 en Qatar?", options: ["Kylian Mbappé", "Lionel Messi", "Luka Modric", "Antoine Griezmann"], correct: 1 },
+  { q: "¿Quién fue el goleador del Mundial de Qatar 2022?", options: ["Lionel Messi", "Olivier Giroud", "Kylian Mbappé", "Julián Álvarez"], correct: 2 },
+  { q: "¿Cuántos minutos dura un partido de fútbol sin alargues?", options: ["80", "90", "100", "120"], correct: 1 },
+  { q: "¿Qué selección quedó eliminada en la final por penales en Qatar 2022?", options: ["Croacia", "Francia", "Marruecos", "Países Bajos"], correct: 1 },
+  { q: "¿Cuál fue la primera selección africana en llegar a semifinales de un Mundial?", options: ["Nigeria", "Camerún", "Senegal", "Marruecos"], correct: 3 },
+  { q: "¿Cada cuántos años se juega la Copa del Mundo?", options: ["2", "3", "4", "5"], correct: 2 },
+  { q: "¿Qué trofeo levanta el campeón del Mundial?", options: ["Copa Libertadores", "Copa Jules Rimet", "Copa FIFA", "Balón de Oro"], correct: 2 },
+  { q: "¿Quién dirigía a Argentina cuando ganó el Mundial 2022?", options: ["Diego Maradona", "Lionel Scaloni", "Jorge Sampaoli", "César Luis Menotti"], correct: 1 },
+  { q: "¿Qué selección eliminó a Brasil en cuartos de final de Qatar 2022?", options: ["Países Bajos", "Croacia", "Marruecos", "Inglaterra"], correct: 1 },
+  { q: "¿Cuántos jugadores integran un equipo dentro del campo (sin contar suplentes)?", options: ["9", "10", "11", "12"], correct: 2 },
+  { q: "¿Qué país ganó la primera Copa del Mundo en 1930?", options: ["Argentina", "Brasil", "Uruguay", "Italia"], correct: 2 },
+  { q: "¿Quién anotó el gol decisivo de Argentina en la final de Qatar 2022 por penales?", options: ["Gonzalo Montiel", "Lautaro Martínez", "Ángel Di María", "Rodrigo De Paul"], correct: 0 },
+  { q: "¿Qué ciudad de EE.UU. albergará la final del Mundial 2026?", options: ["Los Ángeles", "Nueva York/Nueva Jersey", "Miami", "Dallas"], correct: 1 },
+  { q: "¿Qué estadio de México será sede del Mundial 2026, repitiendo como en 1970 y 1986?", options: ["Estadio Azul", "Estadio Banorte (Azteca)", "Estadio Akron", "Estadio BBVA"], correct: 1 },
+];
+
+const QUESTIONS_BY_YEAR = {
+  1986: [
+    { q: "México 1986: ¿qué selección se consagró campeona?", options: ["Alemania", "Argentina", "Brasil", "Francia"], correct: 1 },
+    { q: "México 1986: ¿quién hizo el famoso 'gol del siglo' ante Inglaterra?", options: ["Diego Maradona", "Jorge Valdano", "Mario Kempes", "Carlos Bilardo"], correct: 0 },
+    { q: "México 1986: ¿contra quién jugó Argentina la final?", options: ["Italia", "Alemania Federal", "Brasil", "Bélgica"], correct: 1 },
+  ],
+  1990: [
+    { q: "Italia 1990: ¿qué selección ganó el título?", options: ["Argentina", "Alemania Federal", "Italia", "Inglaterra"], correct: 1 },
+    { q: "Italia 1990: ¿qué selección debutante eliminó a Argentina en el primer partido?", options: ["Camerún", "Costa Rica", "Egipto", "Emiratos Árabes"], correct: 1 },
+    { q: "Italia 1990: ¿cómo se definió la final entre Alemania y Argentina?", options: ["Penales", "Gol de Maradona", "Penal de Brehme", "Tiempo suplementario sin goles"], correct: 2 },
+  ],
+  1994: [
+    { q: "Estados Unidos 1994: ¿qué selección ganó la final?", options: ["Italia", "Brasil", "Países Bajos", "Suecia"], correct: 1 },
+    { q: "EE.UU. 1994: ¿cómo se decidió la final entre Brasil e Italia?", options: ["Gol de oro", "Penales", "Tiempo suplementario", "Gol agónico"], correct: 1 },
+    { q: "EE.UU. 1994: ¿qué jugador italiano falló el penal decisivo en la final?", options: ["Franco Baresi", "Roberto Baggio", "Paolo Maldini", "Daniele Massaro"], correct: 1 },
+  ],
+  1998: [
+    { q: "Francia 1998: ¿qué selección se quedó con la copa?", options: ["Brasil", "Francia", "Croacia", "Holanda"], correct: 1 },
+    { q: "Francia 1998: ¿qué jugador francés anotó dos goles de cabeza en la final?", options: ["Thierry Henry", "Zinedine Zidane", "Emmanuel Petit", "Didier Deschamps"], correct: 1 },
+    { q: "Francia 1998: ¿a quién venció Francia en la final?", options: ["Brasil", "Argentina", "Alemania", "Italia"], correct: 0 },
+  ],
+  2002: [
+    { q: "Corea-Japón 2002: ¿qué selección fue campeona?", options: ["Alemania", "Brasil", "Turquía", "Corea del Sur"], correct: 1 },
+    { q: "Corea-Japón 2002: ¿quién fue el goleador del torneo?", options: ["Ronaldo Nazário", "Rivaldo", "Miroslav Klose", "Ronaldinho"], correct: 0 },
+    { q: "Corea-Japón 2002: fue el primer Mundial organizado por...", options: ["Un solo país europeo", "Dos países asiáticos en conjunto", "Un país sudamericano", "Estados Unidos"], correct: 1 },
+  ],
+  2006: [
+    { q: "Alemania 2006: ¿qué selección ganó el título?", options: ["Francia", "Italia", "Alemania", "Portugal"], correct: 1 },
+    { q: "Alemania 2006: ¿qué jugador francés fue expulsado en la final por un cabezazo?", options: ["Thierry Henry", "Zinedine Zidane", "Patrick Vieira", "Franck Ribéry"], correct: 1 },
+    { q: "Alemania 2006: ¿cómo se definió la final entre Italia y Francia?", options: ["Gol en el suplementario", "Penales", "Gol agónico", "Autogol"], correct: 1 },
+  ],
+  2010: [
+    { q: "Sudáfrica 2010: ¿qué selección europea ganó por primera vez fuera de Europa?", options: ["Alemania", "España", "Países Bajos", "Italia"], correct: 1 },
+    { q: "Sudáfrica 2010: ¿qué jugador anotó el gol decisivo de la final en el alargue?", options: ["David Villa", "Andrés Iniesta", "Xavi Hernández", "Fernando Torres"], correct: 1 },
+    { q: "Sudáfrica 2010: fue el primer Mundial disputado en...", options: ["Asia", "Oceanía", "El continente africano", "América del Norte"], correct: 2 },
+  ],
+  2014: [
+    { q: "Brasil 2014: ¿qué selección se coronó campeona?", options: ["Argentina", "Brasil", "Alemania", "Países Bajos"], correct: 2 },
+    { q: "Brasil 2014: ¿por qué resultado histórico Alemania goleó al local en semifinales?", options: ["5-0", "6-1", "7-1", "4-0"], correct: 2 },
+    { q: "Brasil 2014: ¿quién anotó el gol del título para Alemania en la final ante Argentina?", options: ["Thomas Müller", "Mario Götze", "Miroslav Klose", "Toni Kroos"], correct: 1 },
+  ],
+  2018: [
+    { q: "Rusia 2018: ¿qué selección ganó la Copa del Mundo?", options: ["Croacia", "Bélgica", "Francia", "Inglaterra"], correct: 2 },
+    { q: "Rusia 2018: ¿a qué selección venció Francia en la final?", options: ["Croacia", "Inglaterra", "Bélgica", "Rusia"], correct: 0 },
+    { q: "Rusia 2018: ¿qué joven delantero francés brilló en ese Mundial con 19 años?", options: ["Antoine Griezmann", "Kylian Mbappé", "Olivier Giroud", "Ousmane Dembélé"], correct: 1 },
+  ],
+  2022: [
+    { q: "Qatar 2022: ¿qué selección se consagró campeona del mundo?", options: ["Francia", "Argentina", "Croacia", "Marruecos"], correct: 1 },
+    { q: "Qatar 2022: ¿cómo se definió la final entre Argentina y Francia?", options: ["Tiempo regular", "Suplementario sin más goles", "Penales tras empate en el suplementario", "Gol de oro"], correct: 2 },
+    { q: "Qatar 2022: ¿quién hizo un hat-trick en la final para Francia?", options: ["Olivier Giroud", "Kylian Mbappé", "Ousmane Dembélé", "Antoine Griezmann"], correct: 1 },
+  ],
+};
+
+const YEARS = [1986, 1990, 1994, 1998, 2002, 2006, 2010, 2014, 2018, 2022];
+
+// utilidad: copia y mezcla un array de preguntas
+function shuffle(arr){
+  const a = [...arr];
+  for(let i=a.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]]=[a[j],a[i]];
+  }
+  return a;
+}
+
+
+// ====== ESTADO GLOBAL ======
+const app = document.getElementById('app');
+
+let state = {
+  mode: null,
+  numPlayers: 2,
+  players: ["JUGADOR 1", "JUGADOR 2"],
+  scores: [0, 0],
+  turn: 0,           // índice del jugador actual
+  qIndex: 0,
+  pool: [],
+  // modo 1
+  energy: 60,
+  energyTimer: null,
+  // modo 2 (VAR)
+  varActive: false,
+  varDoublePending: [false, false],
+  // modo 3 (viaje)
+  yearIndex: 0,
+  // modo 4 (racha)
+  streak: [0, 0],
+  // modo 5 (penales)
+  penalProgress: [0, 0],
+};
+
+function render(html){
+  app.innerHTML = html;
+}
+
+function switchTurn(){
+  if(state.numPlayers === 1) return; // un solo jugador, no hay cambio de turno
+  state.turn = 1 - state.turn;
+}
+
+function currentPlayerName(){
+  return state.players[state.turn];
+}
+
+function turnBannerHTML(suffix){
+  if(state.numPlayers === 1){
+    return suffix ? `${currentPlayerName()} ${suffix}` : `¡A JUGAR, ${currentPlayerName()}!`;
+  }
+  return suffix ? `${currentPlayerName()} ${suffix}` : `TURNO DE ${currentPlayerName()}`;
+}
+
+// ====== PANTALLA DE INICIO ======
+function showHome(){
+  clearInterval(state.energyTimer);
+  render(`
+    <div class="pixel-title" style="text-align:center;font-size:15px;margin-bottom:4px;">
+      TRIVIA MUNDIALISTA
+    </div>
+    <div class="pixel-title" style="text-align:center;font-size:11px;color:var(--led-green);margin-bottom:14px;">
+      USA · MÉXICO · CANADÁ 2026
+    </div>
+    <p style="text-align:center;font-size:16px;opacity:0.85;margin-bottom:10px;">
+      Elegí un modo de juego. Se juega de 1 o 2 personas.
+    </p>
+    <div class="mode-grid">
+      <div class="mode-card" onclick="selectPlayerCount('muerte')">
+        <div class="icon">🔥</div>
+        <div class="info">
+          <div class="mtitle">MUERTE SÚBITA</div>
+          <div class="mdesc">60s de energía. Acertar suma, fallar resta. Gana quien más sume.</div>
+        </div>
+      </div>
+      <div class="mode-card" onclick="selectPlayerCount('var')">
+        <div class="icon">📺</div>
+        <div class="info">
+          <div class="mtitle">MODO VAR</div>
+          <div class="mdesc">Cada 5 preguntas, una jugada especial puede duplicar tus puntos.</div>
+        </div>
+      </div>
+      <div class="mode-card" onclick="selectPlayerCount('viaje')">
+        <div class="icon">🌎</div>
+        <div class="info">
+          <div class="mtitle">VIAJE POR MUNDIALES</div>
+          <div class="mdesc">De México 86 a Qatar 2022, viajando en el tiempo edición por edición.</div>
+        </div>
+      </div>
+      <div class="mode-card" onclick="selectPlayerCount('racha')">
+        <div class="icon">🎯</div>
+        <div class="info">
+          <div class="mtitle">RACHA MUNDIALISTA</div>
+          <div class="mdesc">Multiplicador x1 a x5. Una racha de aciertos vale oro.</div>
+        </div>
+      </div>
+      <div class="mode-card" onclick="selectPlayerCount('penales')">
+        <div class="icon">🥅</div>
+        <div class="info">
+          <div class="mtitle">PENALES</div>
+          <div class="mdesc">5 aciertos seguidos acercan la pelota al arco. ¡Definí a los penales!</div>
+        </div>
+      </div>
+    </div>
+  `);
+}
+
+// ====== ELEGIR CANTIDAD DE JUGADORES ======
+function selectPlayerCount(mode){
+  state.mode = mode;
+  render(`
+    <div class="pixel-title" style="text-align:center;font-size:13px;margin-bottom:18px;">
+      ¿CUÁNTOS JUEGAN?
+    </div>
+    <div class="mode-grid">
+      <div class="mode-card" onclick="setupNames('${mode}', 1)">
+        <div class="icon">🧍</div>
+        <div class="info">
+          <div class="mtitle">1 JUGADOR</div>
+          <div class="mdesc">Modo individual, contra tu propio récord.</div>
+        </div>
+      </div>
+      <div class="mode-card" onclick="setupNames('${mode}', 2)">
+        <div class="icon">🧍🧍</div>
+        <div class="info">
+          <div class="mtitle">2 JUGADORES</div>
+          <div class="mdesc">Por turnos, cara a cara en la misma pantalla.</div>
+        </div>
+      </div>
+    </div>
+    <button class="btn btn-secondary" style="margin-top:16px;" onclick="showHome()">← VOLVER</button>
+  `);
+}
+
+// ====== CONFIGURAR NOMBRES ======
+function setupNames(mode, numPlayers){
+  state.mode = mode;
+  state.numPlayers = numPlayers;
+  render(`
+    <div class="pixel-title" style="text-align:center;font-size:13px;margin-bottom:16px;">
+      ANTES DE EMPEZAR
+    </div>
+    <p style="text-align:center;font-size:16px;margin-bottom:6px;">${numPlayers===1 ? 'Tu nombre' : 'Nombre Jugador 1'}</p>
+    <input id="p1name" maxlength="12" placeholder="JUGADOR 1" style="width:100%;margin-bottom:14px;padding:10px;font-family:'VT323';font-size:18px;background:rgba(0,0,0,0.4);border:2px solid var(--chalk);border-radius:8px;color:var(--chalk);text-align:center;">
+    ${numPlayers===2 ? `
+    <p style="text-align:center;font-size:16px;margin-bottom:6px;">Nombre Jugador 2</p>
+    <input id="p2name" maxlength="12" placeholder="JUGADOR 2" style="width:100%;margin-bottom:20px;padding:10px;font-family:'VT323';font-size:18px;background:rgba(0,0,0,0.4);border:2px solid var(--chalk);border-radius:8px;color:var(--chalk);text-align:center;">
+    ` : `<div style="margin-bottom:20px;"></div>`}
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="selectPlayerCount('${mode}')">← VOLVER</button>
+      <button class="btn" onclick="confirmNames()">EMPEZAR ▶</button>
+    </div>
+  `);
+}
+
+function confirmNames(){
+  const p1 = document.getElementById('p1name').value.trim();
+  if(state.numPlayers === 1){
+    state.players = [(p1 || "JUGADOR 1").toUpperCase().slice(0,12), "JUGADOR 2"];
+  } else {
+    const p2 = document.getElementById('p2name').value.trim();
+    state.players = [
+      (p1 || "JUGADOR 1").toUpperCase().slice(0,12),
+      (p2 || "JUGADOR 2").toUpperCase().slice(0,12)
+    ];
+  }
+  startMode(state.mode);
+}
+
+// ====== ARRANCAR MODO ======
+function startMode(mode){
+  state.mode = mode;
+  state.scores = [0,0];
+  state.turn = 0;
+  state.qIndex = 0;
+  state.streak = [0,0];
+  state.penalProgress = [0,0];
+  state.varDoublePending = [false,false];
+  state.yearIndex = 0;
+
+  if(mode === 'muerte'){
+    state.energy = 60;
+    state.pool = shuffle(QUESTIONS_GENERAL);
+    renderMuerteSubita();
+    startEnergyTimer();
+  } else if(mode === 'var'){
+    state.pool = shuffle(QUESTIONS_GENERAL);
+    renderVAR();
+  } else if(mode === 'viaje'){
+    state.yearIndex = 0;
+    renderViaje();
+  } else if(mode === 'racha'){
+    state.pool = shuffle(QUESTIONS_GENERAL);
+    renderRacha();
+  } else if(mode === 'penales'){
+    state.pool = shuffle(QUESTIONS_GENERAL);
+    renderPenales();
+  }
+}
+
+function getNextQuestion(){
+  if(state.qIndex >= state.pool.length){
+    state.pool = shuffle(state.pool);
+    state.qIndex = 0;
+  }
+  const q = state.pool[state.qIndex];
+  state.qIndex++;
+  return q;
+}
+
+// ============================================================
+// MODO 1: MUERTE SÚBITA MUNDIALISTA
+// ============================================================
+function startEnergyTimer(){
+  clearInterval(state.energyTimer);
+  state.energyTimer = setInterval(()=>{
+    state.energy -= 1;
+    if(state.energy <= 0){
+      state.energy = 0;
+      clearInterval(state.energyTimer);
+      endGame();
+      return;
+    }
+    updateEnergyBarOnly();
+  }, 1000);
+}
+
+function updateEnergyBarOnly(){
+  const bar = document.getElementById('energyBarInner');
+  const label = document.getElementById('energyLabel');
+  if(bar){
+    const pct = Math.max(0, Math.min(100, (state.energy/60)*100));
+    bar.style.width = pct + '%';
+  }
+  if(label) label.textContent = state.energy + ' / 60';
+}
+
+function renderMuerteSubita(q){
+  const question = q || getNextQuestion();
+  state._currentQ = question;
+  const pct = Math.max(0, Math.min(100, (state.energy/60)*100));
+
+  render(`
+    <div class="turn-banner">${turnBannerHTML()}</div>
+    <div class="scoreboard">
+      ${scoreboardHTML()}
+    </div>
+    <div class="energy-wrap">
+      <div class="energy-label" id="energyLabel">${state.energy} / 60</div>
+      <div class="energy-bar-outer">
+        <div class="energy-bar-inner" id="energyBarInner" style="width:${pct}%;"></div>
+      </div>
+    </div>
+    <div class="question-box"><p>${question.q}</p></div>
+    <div class="options" id="optsBox">
+      ${question.options.map((opt,i)=>`<button class="option-btn" onclick="answerMuerte(${i})">${opt}</button>`).join('')}
+    </div>
+  `);
+}
+
+function answerMuerte(i){
+  const q = state._currentQ;
+  document.querySelectorAll('.option-btn').forEach(b=>b.disabled=true);
+  const buttons = document.querySelectorAll('.option-btn');
+  buttons[q.correct].classList.add('correct');
+
+  if(i === q.correct){
+    state.scores[state.turn] += 10;
+    state.energy = Math.min(60, state.energy + 3);
+  } else {
+    buttons[i].classList.add('wrong');
+    state.energy -= 5;
+    if(state.energy < 0) state.energy = 0;
+  }
+  updateEnergyBarOnly();
+
+  if(state.energy <= 0){
+    setTimeout(()=>{ clearInterval(state.energyTimer); endGame(); }, 700);
+    return;
+  }
+
+  setTimeout(()=>{
+    switchTurn();
+    renderMuerteSubita();
+  }, 700);
+}
+
+// ============================================================
+// MODO 2: MODO VAR
+// ============================================================
+function renderVAR(){
+  const isVarQuestion = (state.qIndex>0) && (state.qIndex % 5 === 0);
+  const question = getNextQuestion();
+  state._currentQ = question;
+  state._isVar = isVarQuestion;
+
+  render(`
+    <div class="turn-banner">${turnBannerHTML()}</div>
+    <div class="scoreboard">${scoreboardHTML()}</div>
+    <div class="qcounter">Pregunta ${state.qIndex} ${state.varDoublePending[state.turn] ? '· ⭐ PUNTOS DOBLES ACTIVOS' : ''}</div>
+    ${isVarQuestion ? `<div class="var-banner">🚨 JUGADA DE VAR — ¡ACIERTO DOBLE O PIERDES TIEMPO! 🚨</div>` : ''}
+    <div class="question-box"><p>${question.q}</p></div>
+    <div class="options" id="optsBox">
+      ${question.options.map((opt,i)=>`<button class="option-btn" onclick="answerVAR(${i})">${opt}</button>`).join('')}
+    </div>
+  `);
+}
+
+function answerVAR(i){
+  const q = state._currentQ;
+  document.querySelectorAll('.option-btn').forEach(b=>b.disabled=true);
+  const buttons = document.querySelectorAll('.option-btn');
+  buttons[q.correct].classList.add('correct');
+
+  const correct = (i === q.correct);
+  if(!correct) buttons[i].classList.add('wrong');
+
+  let basePoints = correct ? 10 : 0;
+  let msg = "";
+
+  if(state._isVar){
+    if(correct){
+      state.varDoublePending[state.turn] = true;
+      msg = "✅ VAR confirma: ¡la próxima jugada vale el doble!";
+      state.scores[state.turn] += basePoints;
+    } else {
+      msg = "❌ VAR anula la jugada: perdés puntos esta vez.";
+      state.scores[state.turn] = Math.max(0, state.scores[state.turn] - 5);
+    }
+  } else {
+    if(correct){
+      const mult = state.varDoublePending[state.turn] ? 2 : 1;
+      state.scores[state.turn] += basePoints * mult;
+      if(mult===2) msg = "⭐ ¡Puntos dobles aplicados!";
+    }
+    state.varDoublePending[state.turn] = false;
+  }
+
+  if(msg){
+    const box = document.createElement('div');
+    box.className = 'feedback ' + (correct ? 'ok':'bad');
+    box.textContent = msg;
+    document.getElementById('optsBox').insertAdjacentElement('afterend', box);
+  }
+
+  setTimeout(()=>{
+    if(state.qIndex >= 16){ endGame(); return; }
+    switchTurn();
+    renderVAR();
+  }, 1100);
+}
+
+// ============================================================
+// MODO 3: VIAJE POR MUNDIALES
+// ============================================================
+function renderViaje(){
+  if(state.yearIndex >= YEARS.length){
+    endGame();
+    return;
+  }
+  const year = YEARS[state.yearIndex];
+  if(!state._yearPool || state._yearPoolYear !== year){
+    state._yearPool = shuffle(QUESTIONS_BY_YEAR[year]);
+    state._yearPoolYear = year;
+    state._yearQIndex = 0;
+  }
+  if(state._yearQIndex >= state._yearPool.length){
+    // pasar al siguiente mundial
+    state.yearIndex++;
+    state._yearPool = null;
+    switchTurn();
+    renderViaje();
+    return;
+  }
+
+  const question = state._yearPool[state._yearQIndex];
+  state._currentQ = question;
+
+  render(`
+    <div class="turn-banner">${turnBannerHTML()}</div>
+    <div class="scoreboard">${scoreboardHTML()}</div>
+    <div class="year-badge">🌎 MUNDIAL ${year}</div>
+    <div class="year-track">
+      ${YEARS.map((y,idx)=>`<div class="dot ${idx<state.yearIndex?'done':''} ${idx===state.yearIndex?'now':''}"></div>`).join('')}
+    </div>
+    <div class="question-box"><p>${question.q}</p></div>
+    <div class="options" id="optsBox">
+      ${question.options.map((opt,i)=>`<button class="option-btn" onclick="answerViaje(${i})">${opt}</button>`).join('')}
+    </div>
+  `);
+}
+
+function answerViaje(i){
+  const q = state._currentQ;
+  document.querySelectorAll('.option-btn').forEach(b=>b.disabled=true);
+  const buttons = document.querySelectorAll('.option-btn');
+  buttons[q.correct].classList.add('correct');
+  if(i === q.correct){
+    state.scores[state.turn] += 10;
+  } else {
+    buttons[i].classList.add('wrong');
+  }
+  state._yearQIndex++;
+
+  setTimeout(()=>{
+    switchTurn();
+    renderViaje();
+  }, 700);
+}
+
+// ============================================================
+// MODO 4: RACHA MUNDIALISTA
+// ============================================================
+function renderRacha(){
+  const question = getNextQuestion();
+  state._currentQ = question;
+  const mult = Math.min(5, state.streak[state.turn] + 1);
+
+  render(`
+    <div class="turn-banner">${turnBannerHTML()}</div>
+    <div class="scoreboard">${scoreboardHTML()}</div>
+    <div class="streak-display">
+      <div class="mult">x${mult}</div>
+      <div class="streak-dots">
+        ${[1,2,3,4,5].map(n=>`<span class="${n<=state.streak[state.turn] ? 'lit':''}"></span>`).join('')}
+      </div>
+    </div>
+    <div class="qcounter">Pregunta ${state.qIndex}/15</div>
+    <div class="question-box"><p>${question.q}</p></div>
+    <div class="options" id="optsBox">
+      ${question.options.map((opt,i)=>`<button class="option-btn" onclick="answerRacha(${i})">${opt}</button>`).join('')}
+    </div>
+  `);
+}
+
+function answerRacha(i){
+  const q = state._currentQ;
+  document.querySelectorAll('.option-btn').forEach(b=>b.disabled=true);
+  const buttons = document.querySelectorAll('.option-btn');
+  buttons[q.correct].classList.add('correct');
+
+  if(i === q.correct){
+    const mult = Math.min(5, state.streak[state.turn] + 1);
+    state.scores[state.turn] += 10 * mult;
+    state.streak[state.turn] = mult;
+  } else {
+    buttons[i].classList.add('wrong');
+    state.streak[state.turn] = 0;
+  }
+
+  setTimeout(()=>{
+    if(state.qIndex >= 15){ endGame(); return; }
+    switchTurn();
+    renderRacha();
+  }, 700);
+}
+
+// ============================================================
+// MODO 5: PENALES
+// ============================================================
+const PENAL_STEPS = 5; // aciertos seguidos para definir penal
+
+function renderPenales(){
+  const question = getNextQuestion();
+  state._currentQ = question;
+  const progress = state.penalProgress[state.turn];
+  const leftPct = 4 + (progress/PENAL_STEPS) * 86;
+
+  render(`
+    <div class="turn-banner">${turnBannerHTML()}</div>
+    <div class="scoreboard">${scoreboardHTML()}</div>
+    <div class="qcounter">Aciertos seguidos: ${progress}/${PENAL_STEPS}</div>
+    <div class="penal-track">
+      <div class="yard-line" style="left:25%;"></div>
+      <div class="yard-line" style="left:50%;"></div>
+      <div class="yard-line" style="left:75%;"></div>
+      <div class="ball" id="ballEl" style="left:${leftPct}%;">⚽</div>
+      <div class="goal">🥅</div>
+    </div>
+    <div class="question-box"><p>${question.q}</p></div>
+    <div class="options" id="optsBox">
+      ${question.options.map((opt,i)=>`<button class="option-btn" onclick="answerPenal(${i})">${opt}</button>`).join('')}
+    </div>
+  `);
+}
+
+function answerPenal(i){
+  const q = state._currentQ;
+  document.querySelectorAll('.option-btn').forEach(b=>b.disabled=true);
+  const buttons = document.querySelectorAll('.option-btn');
+  buttons[q.correct].classList.add('correct');
+
+  if(i === q.correct){
+    state.scores[state.turn] += 10;
+    state.penalProgress[state.turn]++;
+    if(state.penalProgress[state.turn] >= PENAL_STEPS){
+      const ball = document.getElementById('ballEl');
+      if(ball) ball.style.left = '90%';
+      setTimeout(()=>{
+        showPenalGoal();
+      }, 500);
+      return;
+    }
+  } else {
+    buttons[i].classList.add('wrong');
+    state.penalProgress[state.turn] = 0; // se reinicia la racha
+  }
+
+  setTimeout(()=>{
+    if(state.qIndex >= 20){ endGame(); return; }
+    switchTurn();
+    renderPenales();
+  }, 700);
+}
+
+function showPenalGoal(){
+  render(`
+    <div class="turn-banner">${turnBannerHTML("VA AL PENAL")}</div>
+    <div class="scoreboard">${scoreboardHTML()}</div>
+    <div style="text-align:center;font-size:60px;margin:30px 0;">⚽➡️🥅</div>
+    <div class="pixel-title" style="text-align:center;font-size:20px;color:var(--led-green);">¡GOOOL!</div>
+    <p style="text-align:center;font-size:17px;margin-top:8px;">+30 puntos extra por la definición</p>
+    <button class="btn" style="margin-top:20px;" onclick="continueAfterGoal()">SEGUIR JUGANDO ▶</button>
+  `);
+  state.scores[state.turn] += 30;
+}
+
+function continueAfterGoal(){
+  state.penalProgress[state.turn] = 0;
+  if(state.qIndex >= 20){ endGame(); return; }
+  switchTurn();
+  renderPenales();
+}
+
+// ============================================================
+// SCOREBOARD COMÚN
+// ============================================================
+function scoreboardHTML(){
+  const names = state.numPlayers === 1 ? [state.players[0]] : state.players;
+  return names.map((name,idx)=>`
+    <div class="player-led ${idx===state.turn ? 'active':''}">
+      <div class="pname">${name}</div>
+      <div class="pscore">${state.scores[idx]}</div>
+    </div>
+  `).join('');
+}
+
+// ============================================================
+// PANTALLA FINAL
+// ============================================================
+function getTitleForScore(score){
+  if(score >= 101) return "LEYENDA MUNDIALISTA";
+  if(score >= 51) return "ANALISTA DEPORTIVO";
+  return "HINCHA CASUAL";
+}
+
+function endGame(){
+  clearInterval(state.energyTimer);
+  const s1 = state.scores[0];
+  const s2 = state.scores[1];
+  const modeUsesTitles = (state.mode === 'muerte');
+
+  if(state.numPlayers === 1){
+    render(`
+      <div class="trophy">🏆</div>
+      <div class="title-result">FIN DE LA PARTIDA</div>
+      <div class="winner-tag">¡Buen partido, ${state.players[0]}!</div>
+      <div class="final-scores">
+        <div class="final-card winner" style="flex:1;">
+          <div class="fname">${state.players[0]}</div>
+          <div class="fscore">${s1}</div>
+          ${modeUsesTitles ? `<div style="font-size:12px;margin-top:6px;color:var(--gold-bright);">${getTitleForScore(s1)}</div>` : ''}
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-secondary" onclick="showHome()">MENÚ PRINCIPAL</button>
+        <button class="btn" onclick="startMode(state.mode)">JUGAR DE NUEVO ▶</button>
+      </div>
+    `);
+    return;
+  }
+
+  let winnerText = "";
+  if(s1 === s2){
+    winnerText = "¡EMPATE! Vamos a alargue 😉";
+  } else {
+    const winnerIdx = s1 > s2 ? 0 : 1;
+    winnerText = `🏆 ${state.players[winnerIdx]} GANA EL PARTIDO`;
+  }
+
+  render(`
+    <div class="trophy">🏆</div>
+    <div class="title-result">FIN DEL PARTIDO</div>
+    <div class="winner-tag">${winnerText}</div>
+    <div class="final-scores">
+      <div class="final-card ${s1>=s2 ? 'winner':''}">
+        <div class="fname">${state.players[0]}</div>
+        <div class="fscore">${s1}</div>
+        ${modeUsesTitles ? `<div style="font-size:12px;margin-top:6px;color:var(--gold-bright);">${getTitleForScore(s1)}</div>` : ''}
+      </div>
+      <div class="final-card ${s2>=s1 ? 'winner':''}">
+        <div class="fname">${state.players[1]}</div>
+        <div class="fscore">${s2}</div>
+        ${modeUsesTitles ? `<div style="font-size:12px;margin-top:6px;color:var(--gold-bright);">${getTitleForScore(s2)}</div>` : ''}
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="showHome()">MENÚ PRINCIPAL</button>
+      <button class="btn" onclick="startMode(state.mode)">REVANCHA ▶</button>
+    </div>
+  `);
+}
+
+// ====== ARRANQUE ======
+showHome();
+
+</script>
+</body>
+</html>
