@@ -1,0 +1,1 @@
+# triviacarde-mundial2026
